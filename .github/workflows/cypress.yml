@@ -13,6 +13,8 @@ on:
       - edited
       - converted_to_draft
   workflow_dispatch:
+  push:
+    branches: [main]
 
 concurrency:
   group: batch-${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'candidate' }}
