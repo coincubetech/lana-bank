@@ -2,9 +2,19 @@ name: Update Dependency Caches
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - redesign
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+      - converted_to_draft
+  workflow_dispatch:
 
 # Allow workflow to write cache
 permissions:
@@ -13,6 +23,7 @@ permissions:
 
 jobs:
   update-pnpm-cache:
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base != null))) }}
     name: Update PNPM Cache
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +54,7 @@ jobs:
         run: nix develop -c pnpm install
 
   update-rust-cache:
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base != null))) }}
     name: Update Rust Cache
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +83,7 @@ jobs:
         run: nix develop -c make build
 
   nix-build-cache:
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base != null))) }}
     name: Update Nix Build Cache
     runs-on: ubuntu-latest
     steps:
@@ -81,3 +94,6 @@ jobs:
           google_credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
       - name: build
         run: nix build .
+concurrency:
+  group: batch-${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'candidate' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
