@@ -2,16 +2,25 @@ name: Cypress
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches:
+      - main
+      - redesign
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+      - converted_to_draft
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: batch-${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'candidate' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   run-cypress-tests:
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base != null))) }}
     name: Run Tests
     runs-on: Lana-Big-Runner
     env:
@@ -23,8 +32,8 @@ jobs:
           cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN_LANA_CI }}
           google_credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
           free_disk_space: false
-      - uses: ./.github/actions/cache-rust 
-      - uses: ./.github/actions/cache-pnpm 
+      - uses: ./.github/actions/cache-rust
+      - uses: ./.github/actions/cache-pnpm
       - run: nix develop -c make build-for-tests
       - run: nix develop -c make tilt-in-ci
         env:

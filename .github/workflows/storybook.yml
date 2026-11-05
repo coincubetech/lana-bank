@@ -4,16 +4,25 @@ on:
   pull_request:
     branches:
       - main
-      - 'feature/**'
+      - redesign
     paths:
       - "apps/admin-panel/**"
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+      - converted_to_draft
   push:
     branches: [main]
     paths:
       - "apps/admin-panel/**"
 
+  workflow_dispatch:
 jobs:
   storybook-preview:
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base != null))) }}
     name: Storybook Preview
     runs-on: ubuntu-latest
     steps:
@@ -113,3 +122,6 @@ jobs:
                 body: commentBody,
               });
             }
+concurrency:
+  group: batch-${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'candidate' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}

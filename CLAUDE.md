@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # LANA Bank - Code Guidelines
 
 ## Build/Lint/Test Commands

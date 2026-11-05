@@ -4,10 +4,18 @@ on:
   pull_request:
     branches:
       - main
-      - "feature/**"
-
+      - redesign
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+      - converted_to_draft
+  workflow_dispatch:
 jobs:
   integration:
+    if: ${{ (github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'edited' || github.event.changes.base != null))) }}
     name: SQLX Prepare
     runs-on: ubuntu-latest
     steps:
@@ -16,7 +24,7 @@ jobs:
         with:
           cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN_LANA_CI }}
           google_credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
-      - uses: ./.github/actions/cache-rust 
+      - uses: ./.github/actions/cache-rust
       - name: SQLX Prepare
         run: |
           nix develop -c make reset-deps
@@ -25,6 +33,9 @@ jobs:
 
       # todo: move in a nix based check code
       - name: flake.nix formatting
-        run: |
+        run: |-
           nix fmt flake.nix
           git diff --exit-code flake.nix
+concurrency:
+  group: batch-${{ github.workflow }}-${{ github.ref }}-${{ github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'candidate' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
